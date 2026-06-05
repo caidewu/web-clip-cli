@@ -1,0 +1,23 @@
+{
+  "name": "obsidian-clip",
+  "version": "0.1.0",
+  "description": "一键将网页保存为 Obsidian 兼容的 Markdown 文件",
+  "bin": {
+    "clip": "./dist/cli.cjs"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --dev"
+  },
+  "dependencies": {
+    "dayjs": "^1.11.13",
+    "defuddle": "^0.18.1",
+    "linkedom": "^0.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.5.4"
+  }
+}
