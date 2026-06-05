@@ -2,13 +2,19 @@
   "name": "obsidian-clip",
   "version": "0.1.0",
   "description": "一键将网页保存为 Obsidian 兼容的 Markdown 文件",
+  "license": "MIT",
+  "author": "",
+  "engines": {
+    "node": ">=18"
+  },
   "bin": {
     "clip": "./dist/cli.cjs"
   },
   "files": ["dist"],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "dev": "node scripts/build.mjs --dev"
+    "dev": "node scripts/build.mjs --dev",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "dayjs": "^1.11.13",
