@@ -13,6 +13,7 @@ export interface ClipConfig {
  * 展开路径中的 ~ 为用户主目录
  */
 function expandHome(filepath: string): string {
+  if (typeof filepath !== 'string') return String(filepath);
   if (filepath.startsWith('~/') || filepath === '~') {
     return path.join(os.homedir(), filepath.slice(1));
   }
@@ -25,10 +26,6 @@ function expandHome(filepath: string): string {
  */
 export function loadConfig(): ClipConfig {
   const configPath = path.join(os.homedir(), '.cliprc');
-
-  if (!fs.existsSync(configPath)) {
-    return {};
-  }
 
   try {
     const raw = fs.readFileSync(configPath, 'utf-8');
@@ -43,8 +40,12 @@ export function loadConfig(): ClipConfig {
     }
 
     return config;
-  } catch (err: any) {
-    console.error(`警告: 无法解析 ~/.cliprc: ${err.message}`);
+  } catch (err: unknown) {
+    if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+      return {};
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`警告: 无法解析 ~/.cliprc: ${message}`);
     return {};
   }
 }
