@@ -5,8 +5,8 @@ import { clip, DocumentParser } from '../../obsidian-clipper/src/api';
 import type { Template } from '../../obsidian-clipper/src/types/types';
 import { DEFAULT_TEMPLATE } from './default-template';
 import { loadConfig } from './config';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 // ---------------------------------------------------------------------------
 // 命令行参数解析
@@ -101,12 +101,25 @@ const linkedomParser: DocumentParser = {
 
 function loadTemplate(templatePath: string): Template {
   const resolved = path.resolve(templatePath);
-  if (!fs.existsSync(resolved)) {
-    console.error(`错误: 模板文件不存在: ${resolved}`);
+
+  let raw: string;
+  try {
+    raw = fs.readFileSync(resolved, 'utf-8');
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      console.error(`错误: 模板文件不存在: ${resolved}`);
+      process.exit(1);
+    }
+    console.error(`错误: 无法读取模板文件: ${resolved}`);
     process.exit(1);
   }
-  const raw = fs.readFileSync(resolved, 'utf-8');
-  return JSON.parse(raw);
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    console.error(`错误: 模板文件格式无效: ${resolved}`);
+    process.exit(1);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -131,14 +144,18 @@ async function main(): Promise<void> {
   console.error(`正在抓取: ${url}`);
   let html: string;
   try {
-    const response = await fetch(url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
     if (!response.ok) {
       console.error(`错误: 无法访问 ${url} (HTTP ${response.status})`);
       process.exit(1);
     }
     html = await response.text();
-  } catch (err: any) {
-    console.error(`错误: 网络请求失败: ${err.message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`错误: 网络请求失败: ${message}`);
     process.exit(1);
   }
 
@@ -152,8 +169,9 @@ async function main(): Promise<void> {
       template,
       documentParser: linkedomParser,
     });
-  } catch (err: any) {
-    console.error(`错误: 内容提取失败: ${err.message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`错误: 内容提取失败: ${message}`);
     process.exit(1);
   }
 
@@ -171,8 +189,9 @@ async function main(): Promise<void> {
   // 写入文件
   try {
     fs.writeFileSync(outputPath, result.fullContent, 'utf-8');
-  } catch (err: any) {
-    console.error(`错误: 无法写入文件: ${err.message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`错误: 无法写入文件: ${message}`);
     process.exit(1);
   }
 
