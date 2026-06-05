@@ -49,8 +49,9 @@ await esbuild.build({
     'linkedom',
   ],
   define: {
-    'DEBUG_MODE': 'false',
+    'DEBUG_MODE': isDev ? 'true' : 'false',
   },
+  sourcemap: isDev ? 'inline' : false,
   alias: {
     // 将 obsidian-clipper 内部浏览器依赖替换为 CLI stub
     'webextension-polyfill': path.join(root, '..', 'obsidian-clipper', 'src', 'utils', 'cli-stubs.ts'),
