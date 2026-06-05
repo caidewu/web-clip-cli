@@ -1,8 +1,10 @@
-#!/usr/bin/env node
-
 import { parseHTML } from 'linkedom';
-import { clip, DocumentParser } from '../../obsidian-clipper/src/api';
-import type { Template } from '../../obsidian-clipper/src/types/types';
+import DefuddleClass from 'defuddle';
+import { createMarkdownContent } from 'defuddle/full';
+import { buildVariables, generateFrontmatter, formatPropertyValue } from '../../obsidian-clipper/src/utils/shared';
+import { compileTemplate } from '../../obsidian-clipper/src/utils/template-compiler';
+import { sanitizeFileName } from '../../obsidian-clipper/src/utils/string-utils';
+import type { Template, Property } from '../../obsidian-clipper/src/types/types';
 import { DEFAULT_TEMPLATE } from './default-template';
 import { loadConfig } from './config';
 import * as fs from 'node:fs';
@@ -86,16 +88,6 @@ function parseArgs(argv: string[]): CliArgs {
 }
 
 // ---------------------------------------------------------------------------
-// linkedom 适配器
-// ---------------------------------------------------------------------------
-
-const linkedomParser: DocumentParser = {
-  parseFromString(html: string, _mimeType: string) {
-    return parseHTML(html).document;
-  },
-};
-
-// ---------------------------------------------------------------------------
 // 模板加载
 // ---------------------------------------------------------------------------
 
@@ -120,6 +112,78 @@ function loadTemplate(templatePath: string): Template {
     console.error(`错误: 模板文件格式无效: ${resolved}`);
     process.exit(1);
   }
+}
+
+// ---------------------------------------------------------------------------
+// 主流程
+// ---------------------------------------------------------------------------
+
+async function clipPage(html: string, url: string, template: Template) {
+  const doc = parseHTML(html).document;
+
+  // 使用 defuddle 提取页面内容
+  // 注意: 必须传 doc 本身而非 doc.documentElement，linkedom 下后者不兼容
+  const defuddle = new DefuddleClass(doc as unknown as Document, { url });
+  const extracted = defuddle.parse();
+
+  // HTML → Markdown
+  const markdownContent = createMarkdownContent(extracted.content, url);
+
+  // 构建模板变量
+  const variables = buildVariables({
+    title: extracted.title,
+    author: extracted.author,
+    content: markdownContent,
+    contentHtml: extracted.content,
+    url,
+    fullHtml: html,
+    description: extracted.description,
+    favicon: extracted.favicon,
+    image: extracted.image,
+    published: extracted.published,
+    site: extracted.site,
+    language: extracted.language,
+    wordCount: extracted.wordCount,
+    schemaOrgData: extracted.schemaOrgData,
+    metaTags: extracted.metaTags,
+    extractedContent: extracted.variables,
+  });
+
+  // 编译模板
+  const compile = (text: string) =>
+    compileTemplate(0, text, variables, url);
+
+  const compiledNoteName = await compile(template.noteNameFormat);
+  const noteName = sanitizeFileName(compiledNoteName) || 'Untitled';
+
+  // 编译属性
+  const compiledProperties: Property[] = await Promise.all(
+    template.properties.map(async (prop) => {
+      let value = await compile(prop.value);
+      const propType = prop.type || 'text';
+      value = formatPropertyValue(value, propType, prop.value);
+      return { name: prop.name, value, type: prop.type };
+    })
+  );
+
+  // 构建属性类型映射
+  const typeMap: Record<string, string> = {};
+  for (const prop of template.properties) {
+    if (prop.type) {
+      typeMap[prop.name] = prop.type;
+    }
+  }
+
+  // 生成 frontmatter
+  const frontmatter = generateFrontmatter(compiledProperties, typeMap);
+
+  // 编译笔记内容
+  const content = await compile(template.noteContentFormat);
+
+  // 组装完整内容
+  const fullContent = frontmatter ? frontmatter + content : content;
+
+  return { noteName, fullContent };
 }
 
 // ---------------------------------------------------------------------------
@@ -159,16 +223,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // 调用 clip API 提取内容
+  // 提取内容并生成 Markdown
   console.error('正在提取内容...');
   let result;
   try {
-    result = await clip({
-      html,
-      url,
-      template,
-      documentParser: linkedomParser,
-    });
+    result = await clipPage(html, url, template);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`错误: 内容提取失败: ${message}`);
