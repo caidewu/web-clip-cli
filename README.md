@@ -1,11 +1,18 @@
-# obsidian-clip
+# web-clip-cli
 
 一键将网页保存为 Obsidian 兼容的 Markdown 文件。
 
-## 安装
+## 快速开始
 
 ```bash
-cd obsidian-clip
+npm install -g web-clip-cli
+
+```
+
+## 源码安装
+
+```bash
+cd web-clip-cli
 npm install
 npm run build
 npm link

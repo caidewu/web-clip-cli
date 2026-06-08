@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-clip",
+  "name": "web-clip-cli",
   "version": "0.1.0",
   "description": "一键将网页保存为 Obsidian 兼容的 Markdown 文件",
   "license": "MIT",
@@ -8,13 +8,17 @@
     "node": ">=18"
   },
   "bin": {
+    "web-clip": "./dist/cli.cjs",
     "clip": "./dist/cli.cjs"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node scripts/build.mjs --dev",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "dayjs": "^1.11.13",
