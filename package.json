@@ -1,7 +1,22 @@
 {
   "name": "web-clip-cli",
   "version": "0.1.0",
-  "description": "一键将网页保存为 Obsidian 兼容的 Markdown 文件",
+  "description": "一键将网页保存为 Obsidian 兼容的 Markdown 文件，支持 obsidian-clipper 模板",
+  "keywords": [
+    "obsidian",
+    "markdown",
+    "cli",
+    "web-clipper",
+    "read-it-later",
+    "note-taking",
+    "knowledge-management",
+    "article-extractor",
+    "content-extractor",
+    "second-brain",
+    "zettelkasten",
+    "typescript",
+    "nodejs"
+  ],
   "license": "MIT",
   "author": "",
   "engines": {
